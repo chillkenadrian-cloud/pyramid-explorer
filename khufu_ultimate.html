@@ -1,0 +1,2192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Khufu's Pyramid - Interactive Explorer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --gold: #d4af37;
+            --dark-sand: #2a2416;
+            --light-sand: #c19a6b;
+            --torch-amber: #ff9500;
+            --cyan-glow: #00d4ff;
+            --deep-blue: #0a0e27;
+            --stone-gray: #5a5245;
+            --text-light: #f5e6d3;
+            --sand-brown: #a68860;
+            --pyramid-dark: #6b5a42;
+        }
+
+        body {
+            font-family: 'Cinzel', Georgia, serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1410 100%);
+            color: var(--text-light);
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        #app {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        /* ===== ACHIEVEMENTS BADGE ===== */
+        .achievements-badge {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 50;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            max-width: 300px;
+        }
+
+        .achievement-item {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(212, 175, 55, 0.1));
+            border: 2px solid var(--cyan-glow);
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
+            animation: achievementPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes achievementPop {
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.2);
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .achievement-item:hover {
+            transform: scale(1.15);
+            box-shadow: 0 0 25px rgba(0, 212, 255, 0.8);
+        }
+
+        /* ===== HOME SCREEN ===== */
+        .home-screen {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: linear-gradient(180deg, #0a0e27 0%, #1a1410 30%, #3a2a1a 70%, #5a4830 100%);
+            opacity: 1;
+            transition: opacity 0.8s ease-out;
+            z-index: 1000;
+            overflow: hidden;
+        }
+
+        .home-screen.fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .starfield {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .star {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 3s infinite;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        .moon {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            background: radial-gradient(circle at 30% 30%, #f4e4a0, #daa520);
+            border-radius: 50%;
+            top: 10%;
+            right: 8%;
+            box-shadow: 0 0 60px rgba(218, 165, 32, 0.6);
+            animation: moonOrbit 20s linear infinite;
+        }
+
+        @keyframes moonOrbit {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(10px); }
+            100% { transform: translateY(0px); }
+        }
+
+        .home-content {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            padding-bottom: 80px;
+        }
+
+        .home-title {
+            position: absolute;
+            top: 60px;
+            text-align: center;
+            z-index: 10;
+        }
+
+        .home-title h1 {
+            font-size: 3.5rem;
+            color: var(--gold);
+            text-shadow: 0 0 30px rgba(212, 175, 55, 0.8), 0 0 60px rgba(255, 150, 0, 0.4);
+            letter-spacing: 3px;
+            margin-bottom: 10px;
+            animation: titleGlow 2s ease-in-out infinite;
+        }
+
+        @keyframes titleGlow {
+            0%, 100% { text-shadow: 0 0 30px rgba(212, 175, 55, 0.8), 0 0 60px rgba(255, 150, 0, 0.4); }
+            50% { text-shadow: 0 0 50px rgba(212, 175, 55, 1), 0 0 80px rgba(255, 150, 0, 0.6); }
+        }
+
+        .home-subtitle {
+            font-size: 1.1rem;
+            color: var(--text-light);
+            opacity: 0.8;
+            letter-spacing: 2px;
+        }
+
+        .pyramids-container {
+            position: relative;
+            width: 100%;
+            height: 350px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 60px;
+            padding-bottom: 40px;
+        }
+
+        .pyramid-wrapper {
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            user-select: none;
+        }
+
+        .pyramid-wrapper:hover {
+            transform: translateY(-20px);
+        }
+
+        .pyramid-wrapper:hover .pyramid {
+            filter: drop-shadow(0 25px 60px rgba(212, 175, 55, 0.8));
+        }
+
+        .pyramid-wrapper:hover .pyramid-label {
+            color: #fff;
+            text-shadow: 0 0 20px rgba(212, 175, 55, 1);
+        }
+
+        .pyramid {
+            position: relative;
+            width: 0;
+            height: 0;
+            border-left: solid transparent;
+            border-right: solid transparent;
+            border-bottom: solid;
+            filter: drop-shadow(0 15px 40px rgba(0, 0, 0, 0.7));
+            transition: all 0.3s ease;
+        }
+
+        .pyramid.khufu {
+            border-left-width: 130px;
+            border-right-width: 130px;
+            border-bottom-width: 280px;
+            border-bottom-color: #c19a6b;
+        }
+
+        .pyramid.khafre {
+            border-left-width: 100px;
+            border-right-width: 100px;
+            border-bottom-width: 210px;
+            border-bottom-color: #b8a06b;
+        }
+
+        .pyramid.menkaure {
+            border-left-width: 60px;
+            border-right-width: 60px;
+            border-bottom-width: 130px;
+            border-bottom-color: #a89060;
+        }
+
+        .pyramid-label {
+            position: absolute;
+            bottom: -85px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1rem;
+            color: var(--gold);
+            white-space: nowrap;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .entrance-marker {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #ff6b6b;
+            border-radius: 50%;
+            border: 2px solid var(--gold);
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7); }
+            50% { box-shadow: 0 0 0 8px rgba(255, 107, 107, 0); }
+        }
+
+        .sand-base {
+            position: absolute;
+            bottom: 0;
+            width: 120%;
+            height: 120px;
+            background: linear-gradient(180deg, rgba(165, 140, 100, 0.8), rgba(100, 80, 50, 0.9));
+            border-top: 2px solid rgba(212, 175, 55, 0.3);
+        }
+
+        /* ===== INTERIOR SCREEN ===== */
+        .interior-screen {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: linear-gradient(135deg, rgba(10, 14, 39, 0.95), rgba(26, 20, 16, 0.95));
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.8s ease-out;
+            z-index: 900;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .interior-screen.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .interior-header {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            border-bottom: 2px solid rgba(212, 175, 55, 0.3);
+            padding-bottom: 20px;
+        }
+
+        .interior-title {
+            text-align: center;
+            flex: 1;
+        }
+
+        .interior-title h2 {
+            font-size: 2.5rem;
+            color: var(--gold);
+            text-shadow: 0 0 20px rgba(212, 175, 55, 0.6);
+            letter-spacing: 2px;
+        }
+
+        .interior-title p {
+            font-size: 0.95rem;
+            color: var(--text-light);
+            opacity: 0.7;
+            margin-top: 5px;
+            letter-spacing: 1px;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 0.9rem;
+            color: var(--gold);
+        }
+
+        .stat-display {
+            background: rgba(212, 175, 55, 0.15);
+            padding: 8px 15px;
+            border-radius: 5px;
+            border: 1px solid var(--gold);
+        }
+
+        .back-btn {
+            padding: 10px 20px;
+            background: rgba(212, 175, 55, 0.15);
+            border: 2px solid var(--gold);
+            color: var(--gold);
+            cursor: pointer;
+            border-radius: 5px;
+            font-family: 'Cinzel', serif;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .back-btn:hover {
+            background: rgba(212, 175, 55, 0.3);
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
+            transform: translateY(-2px);
+        }
+
+        /* ===== TAB NAVIGATION ===== */
+        .tab-navigation {
+            display: flex;
+            gap: 15px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 1200px;
+        }
+
+        .tab-btn {
+            padding: 12px 25px;
+            background: rgba(212, 175, 55, 0.15);
+            border: 2px solid rgba(212, 175, 55, 0.5);
+            color: var(--gold);
+            cursor: pointer;
+            border-radius: 5px;
+            font-family: 'Cinzel', serif;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn:hover {
+            background: rgba(212, 175, 55, 0.25);
+            border-color: var(--gold);
+            transform: translateY(-2px);
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.3), rgba(0, 212, 255, 0.1));
+            border-color: var(--cyan-glow);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.6);
+        }
+
+        .tab-content {
+            display: none;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ===== IMAGE GALLERY ===== */
+        .image-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .image-card {
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(212, 175, 55, 0.05));
+            border: 2px solid rgba(212, 175, 55, 0.4);
+            border-radius: 10px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            position: relative;
+        }
+
+        .image-card:hover {
+            border-color: var(--cyan-glow);
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.4);
+            transform: translateY(-10px) scale(1.03);
+        }
+
+        .image-placeholder {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, rgba(193, 154, 107, 0.3), rgba(212, 175, 55, 0.1));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            border-bottom: 2px solid rgba(212, 175, 55, 0.3);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .image-placeholder::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .image-card:hover .image-placeholder {
+            background: linear-gradient(135deg, rgba(193, 154, 107, 0.5), rgba(212, 175, 55, 0.2));
+            transform: scale(1.1);
+        }
+
+        .image-title {
+            padding: 15px;
+            font-size: 1.1rem;
+            color: var(--gold);
+            font-weight: bold;
+        }
+
+        .image-description {
+            padding: 0 15px 15px 15px;
+            font-size: 0.9rem;
+            color: var(--text-light);
+            line-height: 1.5;
+        }
+
+        /* ===== MODAL ===== */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, rgba(26, 20, 16, 0.98), rgba(42, 36, 22, 0.98));
+            border: 2px solid var(--gold);
+            border-radius: 10px;
+            padding: 40px;
+            max-width: 700px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 0 50px rgba(212, 175, 55, 0.4);
+            position: relative;
+            animation: modalPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes modalPop {
+            0% {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: var(--gold);
+            font-size: 2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .modal-close:hover {
+            transform: rotate(90deg);
+            color: var(--cyan-glow);
+        }
+
+        .modal-image {
+            width: 100%;
+            height: 300px;
+            background: linear-gradient(135deg, rgba(193, 154, 107, 0.2), rgba(212, 175, 55, 0.1));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 5rem;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            border: 2px solid rgba(212, 175, 55, 0.3);
+        }
+
+        .modal-title {
+            font-size: 1.8rem;
+            color: var(--gold);
+            margin-bottom: 15px;
+        }
+
+        .modal-text {
+            font-size: 1rem;
+            color: var(--text-light);
+            line-height: 1.7;
+            margin-bottom: 20px;
+        }
+
+        /* ===== MINI GAME STYLES ===== */
+        .game-section {
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(212, 175, 55, 0.05));
+            border: 2px solid rgba(212, 175, 55, 0.4);
+            border-radius: 10px;
+            padding: 30px;
+            margin: 30px 0;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .game-title {
+            font-size: 1.5rem;
+            color: var(--gold);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .game-tile {
+            width: 100%;
+            aspect-ratio: 1;
+            background: linear-gradient(135deg, rgba(193, 154, 107, 0.3), rgba(212, 175, 55, 0.1));
+            border: 2px solid rgba(212, 175, 55, 0.4);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .game-tile:hover {
+            background: linear-gradient(135deg, rgba(193, 154, 107, 0.5), rgba(212, 175, 55, 0.2));
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
+        }
+
+        .game-tile.selected {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.3), rgba(0, 212, 255, 0.1));
+            border-color: var(--cyan-glow);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.6);
+        }
+
+        .game-tile.correct {
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.3), rgba(76, 175, 80, 0.1));
+            border-color: #4caf50;
+            animation: correctFlash 0.6s ease;
+        }
+
+        @keyframes correctFlash {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .game-tile.wrong {
+            background: linear-gradient(135deg, rgba(244, 67, 54, 0.3), rgba(244, 67, 54, 0.1));
+            border-color: #f44336;
+            animation: wrongShake 0.4s ease;
+        }
+
+        @keyframes wrongShake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .game-stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .stat-box {
+            background: rgba(212, 175, 55, 0.15);
+            padding: 15px 25px;
+            border-radius: 5px;
+            border: 1px solid var(--gold);
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            opacity: 0.8;
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            color: var(--gold);
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        /* ===== CHAMBERS GRID ===== */
+        .chambers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            width: 100%;
+            margin: 30px 0;
+        }
+
+        .chamber-card {
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(212, 175, 55, 0.05));
+            border: 2px solid rgba(212, 175, 55, 0.4);
+            border-radius: 8px;
+            padding: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .chamber-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, rgba(0, 212, 255, 0.1), transparent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .chamber-card:hover {
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.2), rgba(212, 175, 55, 0.1));
+            border-color: var(--cyan-glow);
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.4);
+            transform: translateY(-5px);
+        }
+
+        .chamber-card:hover::before {
+            opacity: 1;
+        }
+
+        .chamber-emoji {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .chamber-name {
+            font-size: 1.2rem;
+            color: var(--gold);
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .chamber-desc {
+            font-size: 0.95rem;
+            color: var(--text-light);
+            line-height: 1.6;
+        }
+
+        /* ===== FACTS GRID ===== */
+        .facts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .fact-card {
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(212, 175, 55, 0.05));
+            border: 2px solid rgba(212, 175, 55, 0.4);
+            border-radius: 8px;
+            padding: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .fact-card:hover {
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.2), rgba(212, 175, 55, 0.1));
+            border-color: var(--cyan-glow);
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.4);
+            transform: translateY(-5px) rotateY(5deg);
+        }
+
+        .fact-card-emoji {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+        }
+
+        .fact-card-title {
+            font-size: 1.1rem;
+            color: var(--gold);
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .fact-card-text {
+            font-size: 0.95rem;
+            color: var(--text-light);
+            line-height: 1.6;
+        }
+
+        /* ===== FACT POPUP ===== */
+        .fact-popup {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.15), rgba(212, 175, 55, 0.1));
+            border: 2px solid var(--cyan-glow);
+            border-radius: 8px;
+            padding: 25px;
+            max-width: 380px;
+            z-index: 500;
+            opacity: 0;
+            transform: translateX(400px);
+            pointer-events: auto;
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.3), inset 0 0 20px rgba(0, 212, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .fact-popup.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .fact-title {
+            font-size: 0.9rem;
+            color: var(--cyan-glow);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .fact-text {
+            font-size: 1rem;
+            color: var(--text-light);
+            line-height: 1.5;
+        }
+
+        .close-fact {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: var(--cyan-glow);
+            cursor: pointer;
+            font-size: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .close-fact:hover {
+            transform: rotate(90deg);
+        }
+
+        /* ===== TIMELINE ===== */
+        .timeline {
+            position: relative;
+            max-width: 1000px;
+            margin: 30px auto;
+            padding: 20px;
+        }
+
+        .timeline-item {
+            display: flex;
+            margin-bottom: 30px;
+            opacity: 0;
+            animation: timelineSlide 0.6s ease-out forwards;
+        }
+
+        .timeline-item:nth-child(1) { animation-delay: 0s; }
+        .timeline-item:nth-child(2) { animation-delay: 0.1s; }
+        .timeline-item:nth-child(3) { animation-delay: 0.2s; }
+        .timeline-item:nth-child(4) { animation-delay: 0.3s; }
+        .timeline-item:nth-child(5) { animation-delay: 0.4s; }
+
+        @keyframes timelineSlide {
+            from {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .timeline-marker {
+            width: 30px;
+            height: 30px;
+            background: var(--gold);
+            border: 3px solid rgba(0, 212, 255, 0.5);
+            border-radius: 50%;
+            margin-right: 20px;
+            flex-shrink: 0;
+            margin-top: 5px;
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
+        }
+
+        .timeline-content {
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(212, 175, 55, 0.05));
+            border: 2px solid rgba(212, 175, 55, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+            flex-grow: 1;
+        }
+
+        .timeline-title {
+            font-size: 1.1rem;
+            color: var(--gold);
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        .timeline-year {
+            font-size: 0.9rem;
+            color: var(--cyan-glow);
+            margin-bottom: 10px;
+        }
+
+        .timeline-text {
+            font-size: 0.95rem;
+            color: var(--text-light);
+            line-height: 1.5;
+        }
+
+        /* ===== INTERACTIVE ELEMENTS ===== */
+        .interactive-button {
+            padding: 12px 25px;
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(212, 175, 55, 0.1));
+            border: 2px solid var(--cyan-glow);
+            color: var(--cyan-glow);
+            cursor: pointer;
+            border-radius: 5px;
+            font-family: 'Cinzel', serif;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            margin-top: 15px;
+        }
+
+        .interactive-button:hover {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.3), rgba(212, 175, 55, 0.2));
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.6);
+            transform: translateY(-3px);
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            .home-title h1 {
+                font-size: 2rem;
+            }
+
+            .interior-header {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .tab-navigation {
+                flex-direction: column;
+            }
+
+            .image-gallery,
+            .facts-grid,
+            .chambers-grid,
+            .game-board {
+                grid-template-columns: 1fr;
+            }
+
+            .modal-content {
+                padding: 25px;
+            }
+
+            .fact-popup {
+                max-width: 300px;
+                right: 15px;
+                bottom: 15px;
+            }
+
+            .achievements-badge {
+                max-width: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- HOME SCREEN -->
+        <div class="home-screen" id="homeScreen">
+            <div class="starfield" id="starfield"></div>
+            <div class="moon"></div>
+
+            <div class="home-content">
+                <div class="home-title">
+                    <h1>🔺 THE GIZA NECROPOLIS 🔺</h1>
+                    <div class="home-subtitle">2560 BCE • Fourth Dynasty • Ancient Egypt</div>
+                </div>
+
+                <div class="pyramids-container">
+                    <div class="pyramid-wrapper khufu" onclick="explorePyramid('khufu')">
+                        <div class="pyramid khufu">
+                            <div class="entrance-marker"></div>
+                        </div>
+                        <div class="pyramid-label">Khufu's Pyramid</div>
+                    </div>
+
+                    <div class="pyramid-wrapper khafre" onclick="explorePyramid('khafre')">
+                        <div class="pyramid khafre">
+                            <div class="entrance-marker"></div>
+                        </div>
+                        <div class="pyramid-label">Khafre's Pyramid</div>
+                    </div>
+
+                    <div class="pyramid-wrapper menkaure" onclick="explorePyramid('menkaure')">
+                        <div class="pyramid menkaure">
+                            <div class="entrance-marker"></div>
+                        </div>
+                        <div class="pyramid-label">Menkaure's Pyramid</div>
+                    </div>
+                </div>
+
+                <div class="sand-base"></div>
+            </div>
+
+            <div style="position: absolute; bottom: 30px; text-align: center; z-index: 10; color: var(--text-light); font-size: 1rem; opacity: 0.9;">
+                🔺 Click any pyramid to explore its interior and discover its secrets! 🔺
+            </div>
+        </div>
+
+        <!-- INTERIOR SCREEN -->
+        <div class="interior-screen" id="interiorScreen">
+            <div class="interior-header">
+                <button class="back-btn" onclick="goHome()">← GIZA</button>
+                <div class="interior-title">
+                    <h2 id="pyramidTitle">INTERIOR OF THE GREAT PYRAMID</h2>
+                    <p id="pyramidSubtitle">Khufu • Click the chambers to reveal their secrets</p>
+                </div>
+                <div style="display: flex; gap: 15px;">
+                    <div class="stat-display">
+                        ⭐ <span id="statsScore">0</span> points
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB NAVIGATION -->
+            <div class="tab-navigation">
+                <button class="tab-btn active" onclick="switchTab('chambers', this)">🏛️ Chambers</button>
+                <button class="tab-btn" onclick="switchTab('gallery', this)">📸 Gallery</button>
+                <button class="tab-btn" onclick="switchTab('games', this)">🎮 Games</button>
+                <button class="tab-btn" onclick="switchTab('diagram', this)">📐 Diagram</button>
+                <button class="tab-btn" onclick="switchTab('timeline', this)">📜 Timeline</button>
+                <button class="tab-btn" onclick="switchTab('facts', this)">📚 Facts</button>
+            </div>
+
+            <!-- CHAMBERS TAB -->
+            <div class="tab-content active" id="chambers-tab">
+                <div style="text-align: center; margin: 20px 0; color: var(--text-light); font-size: 1.1rem;">
+                    ✨ Click on any chamber to explore and discover its secrets
+                </div>
+                <div class="chambers-grid" id="chambersGrid" style="max-width: 1200px; width: 100%; margin: 0 auto;"></div>
+            </div>
+
+            <!-- GALLERY TAB -->
+            <div class="tab-content" id="gallery-tab">
+                <div style="text-align: center; margin: 20px 0; color: var(--text-light); font-size: 1.1rem;">
+                    📸 Click any image to see a detailed view
+                </div>
+                <div class="image-gallery" id="imageGallery" style="max-width: 1200px; width: 100%; margin: 0 auto;"></div>
+            </div>
+
+            <!-- GAMES TAB -->
+            <div class="tab-content" id="games-tab" style="max-width: 1200px; width: 100%;">
+                <div id="gamesContainer"></div>
+            </div>
+
+            <!-- DIAGRAM TAB -->
+            <div class="tab-content" id="diagram-tab">
+                <div style="text-align: center; margin: 20px 0; color: var(--text-light);">
+                    📐 Cross-section of the pyramid structure
+                </div>
+                <div style="max-width: 1200px; width: 100%; margin: 0 auto; overflow-x: auto;">
+                    <svg viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg" width="100%" height="auto" style="max-width: 800px; margin: 0 auto; display: block;">
+                        <polygon points="400,50 100,500 700,500" fill="none" stroke="#c19a6b" stroke-width="3"/>
+                        <rect x="0" y="500" width="800" height="100" fill="#4a3f30" opacity="0.5"/>
+                        <circle cx="380" cy="180" r="8" fill="#ff6b6b" stroke="#d4af37" stroke-width="2"/>
+                        <text x="350" y="165" font-family="Cinzel, serif" font-size="14" fill="#c19a6b">Entrance</text>
+                        <line x1="380" y1="180" x2="200" y2="520" stroke="#c19a6b" stroke-width="4" stroke-dasharray="5,5"/>
+                        <rect x="150" y="520" width="100" height="60" fill="none" stroke="#c19a6b" stroke-width="2"/>
+                        <text x="165" y="555" font-family="Cinzel, serif" font-size="12" fill="#c19a6b">SUBTERRANEAN</text>
+                        <line x1="360" y1="260" x2="420" y2="320" stroke="#c19a6b" stroke-width="4" stroke-dasharray="5,5"/>
+                        <text x="365" y="290" font-family="Cinzel, serif" font-size="12" fill="#c19a6b">Ascending</text>
+                        <rect x="400" y="280" width="30" height="120" fill="none" stroke="#c19a6b" stroke-width="3"/>
+                        <text x="330" y="350" font-family="Cinzel, serif" font-size="12" fill="#c19a6b">Grand Gallery</text>
+                        <rect x="440" y="310" width="90" height="70" fill="none" stroke="#c19a6b" stroke-width="2"/>
+                        <text x="455" y="335" font-family="Cinzel, serif" font-size="13" fill="#c19a6b">QUEEN'S</text>
+                        <rect x="440" y="180" width="110" height="80" fill="none" stroke="#d4af37" stroke-width="2.5"/>
+                        <text x="450" y="205" font-family="Cinzel, serif" font-size="14" fill="#d4af37">KING'S</text>
+                        <text x="50" y="480" font-family="Cinzel, serif" font-size="14" fill="#c19a6b">N ←</text>
+                        <text x="720" y="480" font-family="Cinzel, serif" font-size="14" fill="#c19a6b">→ S</text>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- TIMELINE TAB -->
+            <div class="tab-content" id="timeline-tab" style="max-width: 1000px; width: 100%;"></div>
+
+            <!-- FACTS TAB -->
+            <div class="tab-content" id="facts-tab" style="max-width: 1200px; width: 100%;">
+                <h2 style="color: var(--gold); font-size: 1.3rem; margin: 30px 0 20px 0;">Construction Facts</h2>
+                <div class="facts-grid" id="learnMoreGrid" style="max-width: 1200px; width: 100%;"></div>
+            </div>
+
+            <div style="height: 60px;"></div>
+        </div>
+
+        <!-- ACHIEVEMENTS -->
+        <div class="achievements-badge" id="achievementsBadge"></div>
+
+        <!-- IMAGE MODAL -->
+        <div class="modal" id="imageModal">
+            <div class="modal-content">
+                <button class="modal-close" onclick="closeModal()">✕</button>
+                <div class="modal-image" id="modalImage">📸</div>
+                <h2 class="modal-title" id="modalTitle">Image Title</h2>
+                <p class="modal-text" id="modalText">Image description goes here</p>
+            </div>
+        </div>
+
+        <!-- FACT POPUP -->
+        <div class="fact-popup" id="factPopup">
+            <button class="close-fact" onclick="document.getElementById('factPopup').classList.remove('show')">✕</button>
+            <div class="fact-title" id="factTitle">DISCOVERY</div>
+            <div class="fact-text" id="factText">An amazing fact about the pyramid...</div>
+        </div>
+    </div>
+
+    <script>
+        // ===== GAME STATE =====
+        const gameState = {
+            currentView: 'home',
+            currentPyramid: 'khufu',
+            currentTab: 'chambers',
+            score: 0,
+            achievements: [],
+            gamesCompleted: {}
+        };
+
+        const pyramidFacts = {
+            khufu: {
+                name: "Khufu's Great Pyramid",
+                fact: "Originally 146.5 meters tall—taller than a 40-story building.",
+                pharaoh: "Pharaoh Khufu (Cheops)",
+                year: "2589-2566 BCE",
+                height: "146.5m",
+                base: "230.4m",
+                stones: "2.3 million blocks"
+            },
+            khafre: {
+                name: "Khafre's Pyramid",
+                fact: "Still retains some of its original polished limestone casing at the top.",
+                pharaoh: "Pharaoh Khafre",
+                year: "2558-2532 BCE",
+                height: "143.5m",
+                base: "215.3m",
+                stones: "2.2 million blocks"
+            },
+            menkaure: {
+                name: "Menkaure's Pyramid",
+                fact: "Built for Pharaoh Menkaure, son of Khafre. Features red granite blocks.",
+                pharaoh: "Pharaoh Menkaure",
+                year: "2532-2503 BCE",
+                height: "65.5m",
+                base: "102.2m",
+                stones: "0.24 million blocks"
+            }
+        };
+
+        const chambers = {
+            khufu: { name: 'Entrance', emoji: '🚪', desc: 'Entry point into the pyramid', fact: 'The entrance was sealed with 3-ton granite plugs.' },
+            descending: { name: 'Descending Passage', emoji: '⬇️', desc: 'Downward sloping corridor', fact: 'Slopes at 26 degrees for water drainage.' },
+            subterranean: { name: 'Subterranean Chamber', emoji: '🕳️', desc: 'Unfinished underground chamber', fact: 'Its purpose remains a mystery to archaeologists.' },
+            gallery: { name: 'Grand Gallery', emoji: '🏛️', desc: 'Massive corbelled corridor', fact: 'One of the earliest examples of corbelled ceiling architecture.' },
+            queens: { name: 'Queen\'s Chamber', emoji: '👸', desc: 'Secondary burial chamber', fact: 'May have served as a pressure valve.' },
+            kings: { name: 'King\'s Chamber', emoji: '👑', desc: 'Royal burial chamber', fact: 'Contains a 7.5-ton red granite sarcophagus.' },
+            airshafts: { name: 'Air Shafts', emoji: '💨', desc: 'Narrow aligned shafts', fact: 'Align with stars in Orion\'s Belt.' }
+        };
+
+        const pyramidImages = {
+            khufu: [
+                { title: 'Great Pyramid Exterior', emoji: '🏔️', desc: 'The majestic exterior with limestone blocks' },
+                { title: 'Entrance View', emoji: '🚪', desc: 'The main entrance passage' },
+                { title: 'Interior Passage', emoji: '🏛️', desc: 'Intricate internal passages' },
+                { title: 'Sarcophagus', emoji: '⚱️', desc: 'The 7.5-ton red granite sarcophagus' },
+                { title: 'Base Detail', emoji: '🪨', desc: 'Precisely cut limestone blocks' },
+                { title: 'Sunset View', emoji: '🌅', desc: 'The pyramid at sunset' }
+            ],
+            khafre: [
+                { title: 'Khafre\'s Pyramid', emoji: '🏔️', desc: 'With intact casing stones at apex' },
+                { title: 'The Great Sphinx', emoji: '🦁', desc: 'Built by Khafre to guard the pyramid' },
+                { title: 'Valley Temple', emoji: '🏛️', desc: 'Part of the pyramid complex' },
+                { title: 'Two Entrance System', emoji: '🚪', desc: 'Unique two-level entrance' },
+                { title: 'Casing Stones', emoji: '⬜', desc: 'Original polished limestone' },
+                { title: 'Stone Quality', emoji: '🪨', desc: 'High-quality limestone blocks' }
+            ],
+            menkaure: [
+                { title: 'Menkaure\'s Pyramid', emoji: '🏔️', desc: 'The smallest Giza pyramid' },
+                { title: 'Red Granite Blocks', emoji: '🔴', desc: 'Precious material from Aswan' },
+                { title: 'Burial Chamber', emoji: '⚱️', desc: 'Impressive red granite architecture' },
+                { title: 'Temple Complex', emoji: '🏛️', desc: 'Mortuary temple structure' },
+                { title: 'Scale Comparison', emoji: '📐', desc: 'Compared to other pyramids' },
+                { title: 'Interior Detail', emoji: '🏛️', desc: 'Passages and chambers' }
+            ]
+        };
+
+        const pyramidTimelines = {
+            khufu: [
+                { year: '2589 BCE', title: 'Reign Begins', text: 'Khufu becomes pharaoh and plans the greatest monument.' },
+                { year: '2589-2586 BCE', title: 'Quarrying Phase', text: 'Workers extract millions of limestone blocks.' },
+                { year: '2586-2566 BCE', title: 'Construction Phase', text: '20 years of intensive construction.' },
+                { year: '2566 BCE', title: 'Completion', text: 'The Great Pyramid is completed at 146.5 meters.' },
+                { year: '2566 BCE', title: 'Burial', text: 'Khufu is buried in the King\'s Chamber.' }
+            ],
+            khafre: [
+                { year: '2558 BCE', title: 'Reign Begins', text: 'Khafre becomes pharaoh.' },
+                { year: '2556-2532 BCE', title: 'Active Construction', text: 'Approximately 18-20 years of construction.' },
+                { year: '2532 BCE', title: 'Completion', text: 'Khafre\'s pyramid is completed.' },
+                { year: '2500-2000 BCE', title: 'Sphinx Era', text: 'The Great Sphinx guards the plateau.' },
+                { year: 'Present', title: 'Legacy', text: 'Still standing as a testament to ancient engineering.' }
+            ],
+            menkaure: [
+                { year: '2532 BCE', title: 'Reign Begins', text: 'Menkaure becomes pharaoh.' },
+                { year: '2532-2530 BCE', title: 'Site Selection', text: 'Menkaure selects Giza plateau.' },
+                { year: '2530-2503 BCE', title: 'Rapid Construction', text: 'Built in 10-12 years.' },
+                { year: '2503 BCE', title: 'Completion', text: 'Menkaure\'s pyramid is completed.' },
+                { year: 'Present', title: 'Legacy', text: 'Completes the triumvirate of Giza pyramids.' }
+            ]
+        };
+
+        const pyramidFacts_detailed = {
+            khufu: [
+                { emoji: '📏', title: 'Largest Pyramid', text: 'At 146.5 meters, it was the world\'s tallest structure for 3,800 years.' },
+                { emoji: '🪨', title: 'Stone Blocks', text: 'Contains approximately 2.3 million limestone blocks.' },
+                { emoji: '⭐', title: 'Star Alignment', text: 'Air shafts point to Orion\'s Belt and the Pole Star.' },
+                { emoji: '👷', title: 'Workforce', text: 'Built by 20,000-100,000 workers over 20 years.' },
+                { emoji: '✨', title: 'Original Appearance', text: 'Covered in white polished limestone that gleamed like a mirror.' },
+                { emoji: '🏆', title: 'Engineering Marvel', text: 'Shows advanced mathematical and engineering knowledge.' }
+            ],
+            khafre: [
+                { emoji: '📏', title: 'Second Largest', text: 'At 143.5 meters, appears taller due to elevated location.' },
+                { emoji: '🪨', title: 'Intact Casing', text: 'Still retains original polished limestone casing stones.' },
+                { emoji: '⭐', title: 'The Sphinx', text: 'Khafre built the Great Sphinx to guard the plateau.' },
+                { emoji: '👁️', title: 'Unique Entrance', text: 'Features two-level entrance system.' },
+                { emoji: '🏛️', title: 'Mortuary Complex', text: 'Had an elaborate valley temple and causeway.' },
+                { emoji: '🪨', title: 'Red Granite', text: 'Burial chamber features red granite from Aswan.' }
+            ],
+            menkaure: [
+                { emoji: '📏', title: 'Smallest Major Pyramid', text: 'At 65.5 meters, it\'s the smallest of the three.' },
+                { emoji: '🪨', title: 'Red Granite Construction', text: 'Built with precious red granite from Aswan.' },
+                { emoji: '🔴', title: 'Granite Transport', text: 'Quarried 900 km away and shipped down the Nile.' },
+                { emoji: '⏱️', title: 'Faster Construction', text: 'Completed in 10-12 years with advanced techniques.' },
+                { emoji: '👑', title: 'Son of Khafre', text: 'Built by Pharaoh Menkaure, continuing the tradition.' },
+                { emoji: '🏛️', title: 'Temple Complex', text: 'Associated valley temple with statues and reliefs.' }
+            ]
+        };
+
+        // ===== DOM ELEMENTS =====
+        const elements = {
+            homeScreen: document.getElementById('homeScreen'),
+            interiorScreen: document.getElementById('interiorScreen'),
+            factPopup: document.getElementById('factPopup'),
+            chambersGrid: document.getElementById('chambersGrid'),
+            learnMoreGrid: document.getElementById('learnMoreGrid'),
+            imageGallery: document.getElementById('imageGallery'),
+            imageModal: document.getElementById('imageModal'),
+            pyramidTitle: document.getElementById('pyramidTitle'),
+            pyramidSubtitle: document.getElementById('pyramidSubtitle'),
+            starfield: document.getElementById('starfield'),
+            achievementsBadge: document.getElementById('achievementsBadge'),
+            gamesContainer: document.getElementById('gamesContainer'),
+            statsScore: document.getElementById('statsScore')
+        };
+
+        // ===== INIT =====
+        function init() {
+            createStars();
+        }
+
+        function createStars() {
+            for (let i = 0; i < 80; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 60 + '%';
+                star.style.animationDelay = Math.random() * 3 + 's';
+                elements.starfield.appendChild(star);
+            }
+        }
+
+        function explorePyramid(pyramidType) {
+            const fact = pyramidFacts[pyramidType];
+            gameState.currentPyramid = pyramidType;
+            gameState.score = 0;
+            elements.homeScreen.classList.add('fade-out');
+            setTimeout(() => {
+                elements.interiorScreen.classList.add('active');
+                gameState.currentView = 'interior';
+                
+                elements.pyramidTitle.textContent = 'INTERIOR OF ' + fact.name.toUpperCase();
+                elements.pyramidSubtitle.textContent = fact.pharaoh + ' • ' + fact.year;
+                elements.statsScore.textContent = gameState.score;
+                
+                updateChambersForPyramid(pyramidType);
+                updateImageGallery(pyramidType);
+                updateTimeline(pyramidType);
+                updateLearningFacts(pyramidType);
+                createGames(pyramidType);
+                
+                switchTab('chambers', document.querySelector('.tab-btn'));
+                showFact(fact.name, fact.fact);
+            }, 800);
+        }
+
+        function updateChambersForPyramid(pyramidType) {
+            const chambersToShow = getChambersByPyramid(pyramidType);
+            elements.chambersGrid.innerHTML = '';
+            
+            chambersToShow.forEach(key => {
+                const chamber = chambers[key];
+                const card = document.createElement('div');
+                card.className = 'chamber-card';
+                card.innerHTML = `
+                    <div class="chamber-emoji">${chamber.emoji}</div>
+                    <div class="chamber-name">${chamber.name}</div>
+                    <div class="chamber-desc">${chamber.desc}</div>
+                `;
+                card.onclick = () => {
+                    addScore(10);
+                    showFact(chamber.name, chamber.fact);
+                };
+                elements.chambersGrid.appendChild(card);
+            });
+        }
+
+        function getChambersByPyramid(pyramidType) {
+            switch(pyramidType) {
+                case 'khufu':
+                    return ['khufu', 'descending', 'subterranean', 'gallery', 'queens', 'kings', 'airshafts'];
+                case 'khafre':
+                    return ['khufu', 'descending', 'gallery'];
+                case 'menkaure':
+                    return ['khufu', 'descending'];
+                default:
+                    return [];
+            }
+        }
+
+        function updateImageGallery(pyramidType) {
+            const images = pyramidImages[pyramidType] || [];
+            elements.imageGallery.innerHTML = '';
+            
+            images.forEach(image => {
+                const card = document.createElement('div');
+                card.className = 'image-card';
+                card.innerHTML = `
+                    <div class="image-placeholder">${image.emoji}</div>
+                    <div class="image-title">${image.title}</div>
+                    <div class="image-description">${image.desc}</div>
+                `;
+                card.onclick = () => {
+                    addScore(5);
+                    showImageModal(image);
+                };
+                elements.imageGallery.appendChild(card);
+            });
+        }
+
+        function updateTimeline(pyramidType) {
+            const timeline = pyramidTimelines[pyramidType] || [];
+            const timelineContainer = document.getElementById('timeline-tab');
+            timelineContainer.innerHTML = '';
+            
+            timeline.forEach(item => {
+                const timelineItem = document.createElement('div');
+                timelineItem.className = 'timeline-item';
+                timelineItem.innerHTML = `
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                        <div class="timeline-year">${item.year}</div>
+                        <div class="timeline-title">${item.title}</div>
+                        <div class="timeline-text">${item.text}</div>
+                    </div>
+                `;
+                timelineContainer.appendChild(timelineItem);
+            });
+        }
+
+        function updateLearningFacts(pyramidType) {
+            const facts = pyramidFacts_detailed[pyramidType] || [];
+            elements.learnMoreGrid.innerHTML = '';
+            
+            facts.forEach(fact => {
+                const card = document.createElement('div');
+                card.className = 'fact-card';
+                card.innerHTML = `
+                    <div class="fact-card-emoji">${fact.emoji}</div>
+                    <div class="fact-card-title">${fact.title}</div>
+                    <div class="fact-card-text">${fact.text}</div>
+                `;
+                card.onclick = () => {
+                    addScore(15);
+                    showFact(fact.title, fact.text);
+                };
+                elements.learnMoreGrid.appendChild(card);
+            });
+        }
+
+        function createGames(pyramidType) {
+            elements.gamesContainer.innerHTML = '';
+
+            // GAME 1: Photo Memory Matching
+            const memoryGame = document.createElement('div');
+            memoryGame.className = 'game-section';
+            memoryGame.innerHTML = `
+                <div class="game-title">🎮 Photo Memory Challenge - Match the Pyramid Views</div>
+                <div style="text-align: center; color: var(--text-light); margin: 15px 0; font-size: 1rem;">
+                    Find matching pairs! Higher scores for faster times!
+                </div>
+                <div class="game-board" style="grid-template-columns: repeat(4, 1fr);" id="memoryBoard"></div>
+                <div class="game-stats">
+                    <div class="stat-box">
+                        <div class="stat-label">Matches Found</div>
+                        <div class="stat-value" id="memoryMatches">0/6</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Time</div>
+                        <div class="stat-value" id="memoryTimer">0s</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Attempts</div>
+                        <div class="stat-value" id="memoryAttempts">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Best Score</div>
+                        <div class="stat-value" id="memoryBest">-</div>
+                    </div>
+                </div>
+                <button class="interactive-button" onclick="startMemoryGame()">🎮 Start Memory Game</button>
+            `;
+            elements.gamesContainer.appendChild(memoryGame);
+
+            // GAME 2: Expanded Pyramid Quiz
+            const quizGame = document.createElement('div');
+            quizGame.className = 'game-section';
+            quizGame.innerHTML = `
+                <div class="game-title">📚 Pyramid Knowledge Quiz - Answer 10 Questions</div>
+                <div style="text-align: center; color: var(--text-light); margin: 15px 0; font-size: 1rem;">
+                    Test your knowledge! Compete for the highest quiz score!
+                </div>
+                <div id="quizContainer" style="text-align: center; padding: 20px;">
+                    <button class="interactive-button" onclick="startCompetitiveQuiz()">🎯 Start Quiz</button>
+                    <div class="stat-box" style="margin-top: 20px; display: inline-block;">
+                        <div class="stat-label">Your Best Quiz Score</div>
+                        <div class="stat-value" id="quizBestScore">0/10</div>
+                    </div>
+                </div>
+            `;
+            elements.gamesContainer.appendChild(quizGame);
+
+            // GAME 3: Interactive Pyramid Builder (Reaction-Based)
+            const builderGame = document.createElement('div');
+            builderGame.className = 'game-section';
+            builderGame.innerHTML = `
+                <div class="game-title">⚡ Reaction Speed Challenge - Click Stones as Fast as You Can!</div>
+                <div style="text-align: center; color: var(--text-light); margin: 15px 0; font-size: 1rem;">
+                    Stones will highlight randomly. Click them AS FAST AS POSSIBLE to measure your reaction speed!
+                </div>
+                <div style="display: flex; justify-content: center; margin: 30px 0;">
+                    <div id="pyramidBuilder" style="font-size: 0.8rem;"></div>
+                </div>
+                <div class="game-stats">
+                    <div class="stat-box">
+                        <div class="stat-label">Round Progress</div>
+                        <div class="stat-value" id="builderProgress">0/10</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Reaction Time</div>
+                        <div class="stat-value" id="builderRemaining">--ms</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Status</div>
+                        <div class="stat-value" id="builderTime">Ready</div>
+                    </div>
+                </div>
+                <button class="interactive-button" onclick="startPyramidBuilder()">⚡ Test Reaction Speed</button>
+            `;
+            elements.gamesContainer.appendChild(builderGame);
+        }
+
+        // ===== PHOTO MEMORY GAME DATA =====
+        const memoryPhotos = {
+            photos: [
+                { id: 1, name: 'Great Pyramid Aerial', emoji: '🏔️' },
+                { id: 1, name: 'Great Pyramid Aerial', emoji: '🏔️' },
+                { id: 2, name: 'Pyramid Entrance', emoji: '🚪' },
+                { id: 2, name: 'Pyramid Entrance', emoji: '🚪' },
+                { id: 3, name: 'Pyramid Interior', emoji: '🏛️' },
+                { id: 3, name: 'Pyramid Interior', emoji: '🏛️' },
+                { id: 4, name: 'Stone Blocks', emoji: '🪨' },
+                { id: 4, name: 'Stone Blocks', emoji: '🪨' },
+                { id: 5, name: 'Desert Sunset', emoji: '🌅' },
+                { id: 5, name: 'Desert Sunset', emoji: '🌅' },
+                { id: 6, name: 'Limestone Detail', emoji: '⬜' },
+                { id: 6, name: 'Limestone Detail', emoji: '⬜' }
+            ]
+        };
+
+        // ===== VERIFIED PYRAMID QUIZ DATABASES =====
+        const quizDatabaseKhufu = [
+            { q: 'What was the original height of Khufu\'s Great Pyramid?', options: ['146.5 meters', '140 meters', '150 meters', '130 meters'], correct: 0 },
+            { q: 'Approximately how many stone blocks were used in the Great Pyramid?', options: ['2.3 million', '1.5 million', '3 million', '1 million'], correct: 0 },
+            { q: 'How much does the red granite sarcophagus in the King\'s Chamber weigh?', options: ['7.5 tons', '5 tons', '10 tons', '6 tons'], correct: 0 },
+            { q: 'How many years did it take to construct the Great Pyramid?', options: ['Approximately 20 years', '10 years', '30 years', '40 years'], correct: 0 },
+            { q: 'What material is the sarcophagus in the King\'s Chamber made from?', options: ['Red granite from Aswan', 'Limestone', 'White granite', 'Marble'], correct: 0 },
+            { q: 'For how many years was the Great Pyramid the world\'s tallest structure?', options: ['3,800 years', '2,000 years', '5,000 years', '1,500 years'], correct: 0 },
+            { q: 'What are the base dimensions of the Great Pyramid?', options: ['230.4 meters on each side', '200 meters', '250 meters', '220 meters'], correct: 0 },
+            { q: 'How many main internal chambers does the Great Pyramid contain?', options: ['3 (King\'s, Queen\'s, Subterranean)', '2', '5', '4'], correct: 0 },
+            { q: 'To which constellation do the King\'s Chamber air shafts align?', options: ['Orion\'s Belt', 'Ursa Major', 'Cassiopeia', 'Polaris'], correct: 0 },
+            { q: 'What is the slope angle of the Great Pyramid\'s sides?', options: ['51.5 degrees', '45 degrees', '60 degrees', '40 degrees'], correct: 0 },
+            { q: 'Which pharaoh ruled during the construction of the Great Pyramid?', options: ['Khufu (Cheops)', 'Khafre', 'Menkaure', 'Djoser'], correct: 0 },
+            { q: 'What was the estimated workforce for the Great Pyramid construction?', options: ['20,000 to 100,000 workers', '10,000 workers', '200,000 workers', '5,000 workers'], correct: 0 },
+            { q: 'What material covers the original interior of the chambers?', options: ['Polished red and white granite', 'Limestone', 'Marble', 'Sandstone'], correct: 0 },
+            { q: 'How long is the Grand Gallery?', options: ['46.7 meters', '30 meters', '60 meters', '25 meters'], correct: 0 },
+            { q: 'How high is the Grand Gallery\'s corbelled ceiling?', options: ['8.5 meters (28 feet)', '5 meters', '10 meters', '6 meters'], correct: 0 }
+        ];
+
+        const quizDatabaseKhafre = [
+            { q: 'What is the original height of Khafre\'s Pyramid?', options: ['143.5 meters', '140 meters', '150 meters', '130 meters'], correct: 0 },
+            { q: 'In what year did Khafre\'s reign begin?', options: ['2558 BCE', '2550 BCE', '2565 BCE', '2545 BCE'], correct: 0 },
+            { q: 'What famous monument did Khafre build?', options: ['The Great Sphinx', 'The Step Pyramid', 'The Bent Pyramid', 'The Red Pyramid'], correct: 0 },
+            { q: 'What unique feature does Khafre\'s Pyramid still retain?', options: ['Original polished limestone casing stones at the apex', 'Gold plating', 'Copper decorations', 'Paint markings'], correct: 0 },
+            { q: 'How long was Khafre\'s reign?', options: ['Approximately 26 years', '20 years', '30 years', '40 years'], correct: 0 },
+            { q: 'What is the base measurement of Khafre\'s Pyramid?', options: ['215.3 meters on each side', '230 meters', '200 meters', '225 meters'], correct: 0 },
+            { q: 'How many stone blocks were used in Khafre\'s Pyramid?', options: ['Approximately 2.2 million', '2.5 million', '1.8 million', '3 million'], correct: 0 },
+            { q: 'At what location is Khafre\'s Pyramid entrance?', options: ['15 meters above ground level', 'At ground level', '20 meters above ground', '10 meters above ground'], correct: 0 },
+            { q: 'What material does the valley temple of Khafre\'s complex use?', options: ['Red granite and limestone', 'Pure marble', 'Sandstone only', 'Alabaster'], correct: 0 },
+            { q: 'How tall is the Great Sphinx that Khafre built?', options: ['73.5 meters long, 20 meters high', '50 meters', '100 meters', '60 meters'], correct: 0 },
+            { q: 'Approximately how long did it take to build Khafre\'s Pyramid?', options: ['18-20 years', '25 years', '15 years', '30 years'], correct: 0 },
+            { q: 'What geological formation was used for the Great Sphinx?', options: ['Natural limestone bedrock outcrop', 'Transported blocks', 'Granite', 'Sandstone'], correct: 0 },
+            { q: 'How does Khafre\'s Pyramid compare in apparent height to Khufu\'s?', options: ['Appears taller due to elevated location', 'Is actually taller', 'Is shorter', 'Appears the same size'], correct: 0 },
+            { q: 'What was the purpose of Khafre\'s mortuary temple?', options: ['Religious ceremonies and pharaoh worship', 'Military storage', 'Worker housing', 'Grain storage'], correct: 0 },
+            { q: 'From where was the red granite for Khafre\'s temple quarried?', options: ['Aswan (900 km south)', 'Local Giza quarries', 'Cairo region', 'Nile Delta'], correct: 0 }
+        ];
+
+        const quizDatabaseMenkaure = [
+            { q: 'What is the original height of Menkaure\'s Pyramid?', options: ['65.5 meters', '75 meters', '85 meters', '55 meters'], correct: 0 },
+            { q: 'Who was Menkaure\'s father?', options: ['Khafre', 'Khufu', 'Djoser', 'Pepi II'], correct: 0 },
+            { q: 'In what year did Menkaure\'s reign begin?', options: ['2532 BCE', '2520 BCE', '2540 BCE', '2550 BCE'], correct: 0 },
+            { q: 'How long was Menkaure\'s reign?', options: ['Approximately 29 years', '20 years', '40 years', '15 years'], correct: 0 },
+            { q: 'What is the base measurement of Menkaure\'s Pyramid?', options: ['102.2 meters on each side', '120 meters', '90 meters', '110 meters'], correct: 0 },
+            { q: 'What special material was used extensively in Menkaure\'s Pyramid?', options: ['Red granite from Aswan', 'White limestone', 'Black granite', 'Pink granite'], correct: 0 },
+            { q: 'How many stone blocks were used in Menkaure\'s Pyramid?', options: ['Approximately 200,000-240,000 blocks', '500,000', '1 million', '100,000'], correct: 0 },
+            { q: 'How many years did it take to construct Menkaure\'s Pyramid?', options: ['Approximately 10-12 years', '20 years', '5 years', '15 years'], correct: 0 },
+            { q: 'How much does the black granite sarcophagus in Menkaure\'s chamber weigh?', options: ['7 tons', '5 tons', '10 tons', '3 tons'], correct: 0 },
+            { q: 'What rank is Menkaure\'s Pyramid among the Giza pyramids?', options: ['Smallest of the three main pyramids', 'Largest', 'Medium-sized', 'Same size as Khafre\'s'], correct: 0 },
+            { q: 'What distance was the red granite transported?', options: ['900 km from Aswan by boat', '300 km', '1,200 km', '500 km'], correct: 0 },
+            { q: 'How many known pyramid complexes did Menkaure construct?', options: ['One main pyramid complex at Giza', 'Multiple pyramids', 'Three pyramids', 'Two main complexes'], correct: 0 },
+            { q: 'What architectural style does Menkaure\'s burial chamber feature?', options: ['Gabled/pitched roof design', 'Corbelled ceiling', 'Flat roof', 'Arched ceiling'], correct: 0 },
+            { q: 'How many subsidiary pyramids accompany Menkaure\'s main pyramid?', options: ['Three smaller pyramids (likely for queens)', 'One', 'Five', 'Two'], correct: 0 },
+            { q: 'What was the construction philosophy difference in Menkaure\'s time?', options: ['Less complex interior, faster construction methods', 'More elaborate chambers', 'Taller proportions', 'Larger workforce needed'], correct: 0 }
+        ];
+
+        const allQuizDatabases = {
+            khufu: quizDatabaseKhufu,
+            khafre: quizDatabaseKhafre,
+            menkaure: quizDatabaseMenkaure
+        };
+
+        // ===== ENHANCED MEMORY GAME =====
+        let memoryState = {
+            cards: [],
+            flipped: [],
+            matched: [],
+            attempts: 0,
+            startTime: null,
+            timerInterval: null,
+            bestScore: localStorage.getItem('memoryBest') || '-'
+        };
+
+        function startMemoryGame() {
+            memoryState.cards = memoryPhotos.photos.sort(() => Math.random() - 0.5);
+            memoryState.flipped = [];
+            memoryState.matched = [];
+            memoryState.attempts = 0;
+            memoryState.startTime = Date.now();
+            document.getElementById('memoryBest').textContent = memoryState.bestScore;
+            
+            const board = document.getElementById('memoryBoard');
+            board.innerHTML = '';
+            
+            memoryState.cards.forEach((card, index) => {
+                const tile = document.createElement('div');
+                tile.className = 'game-tile';
+                tile.style.height = '100%';
+                tile.dataset.index = index;
+                tile.dataset.id = card.id;
+                tile.textContent = '❓';
+                tile.style.fontSize = '2.5rem';
+                
+                tile.onclick = () => flipCard(tile, index);
+                board.appendChild(tile);
+            });
+
+            if (memoryState.timerInterval) clearInterval(memoryState.timerInterval);
+            memoryState.timerInterval = setInterval(() => {
+                const seconds = Math.floor((Date.now() - memoryState.startTime) / 1000);
+                document.getElementById('memoryTimer').textContent = seconds + 's';
+            }, 100);
+        }
+
+        function flipCard(tile, index) {
+            if (memoryState.flipped.length >= 2 || memoryState.matched.includes(index) || tile.classList.contains('flipped')) {
+                return;
+            }
+
+            tile.classList.add('flipped');
+            tile.textContent = memoryState.cards[index].emoji;
+            memoryState.flipped.push(index);
+            document.getElementById('memoryAttempts').textContent = Math.floor(memoryState.attempts / 2);
+
+            if (memoryState.flipped.length === 2) {
+                memoryState.attempts++;
+                const [first, second] = memoryState.flipped;
+
+                if (memoryState.cards[first].id === memoryState.cards[second].id) {
+                    document.querySelectorAll('.game-tile')[first].classList.add('correct');
+                    document.querySelectorAll('.game-tile')[second].classList.add('correct');
+                    memoryState.matched.push(first, second);
+                    memoryState.flipped = [];
+
+                    const matches = memoryState.matched.length / 2;
+                    document.getElementById('memoryMatches').textContent = matches + '/6';
+
+                    if (matches === 6) {
+                        clearInterval(memoryState.timerInterval);
+                        const seconds = Math.floor((Date.now() - memoryState.startTime) / 1000);
+                        const score = Math.max(0, 100 - seconds);
+                        
+                        if (memoryState.bestScore === '-' || score > parseInt(memoryState.bestScore)) {
+                            memoryState.bestScore = score;
+                            localStorage.setItem('memoryBest', score);
+                        }
+
+                        addScore(100 - seconds);
+                        unlockAchievement('🎮', 'Memory Master');
+                        showFact('Memory Game Complete!', 'Time: ' + seconds + 's | Score: ' + Math.max(0, 100 - seconds) + ' points!');
+                    }
+                } else {
+                    setTimeout(() => {
+                        document.querySelectorAll('.game-tile')[first].classList.remove('flipped');
+                        document.querySelectorAll('.game-tile')[second].classList.remove('flipped');
+                        document.querySelectorAll('.game-tile')[first].textContent = '❓';
+                        document.querySelectorAll('.game-tile')[second].textContent = '❓';
+                        memoryState.flipped = [];
+                    }, 1000);
+                }
+            }
+        }
+
+        // ===== EXPANDED QUIZ GAME =====
+        let quizState = {
+            currentQuestion: 0,
+            score: 0,
+            answered: 0,
+            bestScore: localStorage.getItem('quizBest') || 0
+        };
+
+        function startCompetitiveQuiz() {
+            quizState.currentQuestion = 0;
+            quizState.score = 0;
+            quizState.answered = 0;
+            
+            document.getElementById('quizBestScore').textContent = quizState.bestScore + '/10';
+            showNextQuestion();
+        }
+
+        function showNextQuestion() {
+            if (quizState.currentQuestion >= 10) {
+                endQuiz();
+                return;
+            }
+
+            // Get pyramid-specific questions
+            const pyramidQuestions = allQuizDatabases[gameState.currentPyramid];
+            const question = pyramidQuestions[Math.floor(Math.random() * pyramidQuestions.length)];
+            const container = document.getElementById('quizContainer');
+            
+            let optionsHTML = question.options.map((option, index) => `
+                <div class="game-tile" onclick="checkQuizAnswer(${index}, ${question.correct})" style="cursor: pointer; font-size: 1rem; padding: 15px;">
+                    ${option}
+                </div>
+            `).join('');
+
+            container.innerHTML = `
+                <h3 style="color: var(--gold); margin: 20px 0; font-size: 1.2rem;">Question ${quizState.currentQuestion + 1}/10</h3>
+                <p style="color: var(--text-light); margin: 20px 0; font-size: 1.1rem;">${question.q}</p>
+                <div class="game-board" style="grid-template-columns: 1fr;">
+                    ${optionsHTML}
+                </div>
+                <div class="stat-box" style="margin-top: 20px; display: inline-block;">
+                    <div class="stat-label">Current Score</div>
+                    <div class="stat-value">${quizState.score}/10</div>
+                </div>
+            `;
+        }
+
+        function checkQuizAnswer(selected, correct) {
+            quizState.answered++;
+            if (selected === correct) {
+                quizState.score++;
+                addScore(25);
+                showFact('Correct! ✓', 'Great knowledge! +25 points');
+            } else {
+                showFact('Wrong ✗', 'Better luck next time!');
+            }
+
+            quizState.currentQuestion++;
+            setTimeout(() => showNextQuestion(), 1500);
+        }
+
+        function endQuiz() {
+            const container = document.getElementById('quizContainer');
+            const score = quizState.score;
+            
+            if (score > quizState.bestScore) {
+                quizState.bestScore = score;
+                localStorage.setItem('quizBest', score);
+            }
+
+            let message = '';
+            if (score === 10) {
+                message = 'Perfect! You\'re a Pyramid Expert! 🏆';
+                unlockAchievement('🧠', 'Quiz Master');
+                addScore(100);
+            } else if (score >= 8) {
+                message = 'Excellent! You know a lot about pyramids! 🌟';
+                addScore(50);
+            } else if (score >= 5) {
+                message = 'Good job! Keep learning! 📚';
+                addScore(25);
+            } else {
+                message = 'Keep studying! There\'s more to learn! 📖';
+            }
+
+            container.innerHTML = `
+                <h2 style="color: var(--gold); margin: 30px 0;">${message}</h2>
+                <div class="stat-box" style="font-size: 1.5rem; padding: 30px;">
+                    <div class="stat-label">Final Score</div>
+                    <div class="stat-value">${score}/10</div>
+                </div>
+                <button class="interactive-button" onclick="startCompetitiveQuiz()">Try Again</button>
+                <div class="stat-box" style="margin-top: 20px; display: inline-block;">
+                    <div class="stat-label">Best Quiz Score</div>
+                    <div class="stat-value">${quizState.bestScore}/10</div>
+                </div>
+            `;
+        }
+
+        // ===== REACTION-BASED PYRAMID BUILDER =====
+        let reactionState = {
+            round: 0,
+            totalRounds: 15,
+            scores: [],
+            averageReactionTime: 0,
+            fastestTime: Infinity,
+            slowestTime: 0,
+            gameActive: false,
+            nextStoneTimeout: null,
+            roundStartTime: null,
+            currentHighlightedStone: null,
+            missedRounds: 0
+        };
+
+        function startPyramidBuilder() {
+            reactionState.round = 0;
+            reactionState.totalRounds = 15;
+            reactionState.scores = [];
+            reactionState.averageReactionTime = 0;
+            reactionState.fastestTime = Infinity;
+            reactionState.slowestTime = 0;
+            reactionState.gameActive = true;
+            reactionState.missedRounds = 0;
+            reactionState.currentHighlightedStone = null;
+
+            const builder = document.getElementById('pyramidBuilder');
+            builder.innerHTML = '';
+            builder.style.display = 'flex';
+            builder.style.flexDirection = 'column';
+            builder.style.alignItems = 'center';
+            builder.style.gap = '8px';
+
+            const levels = [6, 5, 4, 3, 2, 1];
+            
+            levels.forEach(level => {
+                const levelDiv = document.createElement('div');
+                levelDiv.style.display = 'flex';
+                levelDiv.style.gap = '8px';
+                levelDiv.style.justifyContent = 'center';
+
+                for (let i = 0; i < level; i++) {
+                    const stone = document.createElement('div');
+                    stone.className = 'game-tile';
+                    stone.style.width = '50px';
+                    stone.style.height = '50px';
+                    stone.style.padding = '0';
+                    stone.style.margin = '0';
+                    stone.textContent = '🪨';
+                    stone.style.fontSize = '1.5rem';
+                    stone.style.cursor = 'pointer';
+                    stone.style.transition = 'all 0.15s ease';
+                    stone.style.userSelect = 'none';
+                    stone.dataset.level = level;
+                    stone.dataset.index = i;
+                    stone.dataset.reactionStone = 'false';
+                    stone.dataset.alreadyClicked = 'false';
+                    stone.dataset.startTime = '0';
+                    stone.dataset.tooSlowTimeout = '0';
+
+                    stone.onmousedown = (e) => {
+                        e.preventDefault();
+                        clickReactionStone(stone);
+                    };
+                    stone.ontouchstart = (e) => {
+                        e.preventDefault();
+                        clickReactionStone(stone);
+                    };
+                    
+                    levelDiv.appendChild(stone);
+                }
+
+                builder.appendChild(levelDiv);
+            });
+
+            document.getElementById('builderProgress').textContent = '⏳ Ready? Starting in 2 seconds...';
+            setTimeout(() => startReactionRound(), 2000);
+        }
+
+        function startReactionRound() {
+            if (reactionState.round >= reactionState.totalRounds) {
+                endReactionGame();
+                return;
+            }
+
+            reactionState.round++;
+            reactionState.currentHighlightedStone = null;
+            document.getElementById('builderProgress').textContent = 'Round ' + reactionState.round + '/' + reactionState.totalRounds;
+            
+            // Wait 0.8-2 seconds before highlighting a stone
+            const waitTime = Math.random() * 1200 + 800;
+            
+            reactionState.nextStoneTimeout = setTimeout(() => {
+                highlightRandomStone();
+            }, waitTime);
+        }
+
+        function highlightRandomStone() {
+            const stones = document.querySelectorAll('#pyramidBuilder .game-tile');
+            const randomStone = stones[Math.floor(Math.random() * stones.length)];
+            
+            // Remove previous highlight and reset all stones
+            stones.forEach(s => {
+                if (s.dataset.reactionStone === 'true') {
+                    s.style.backgroundColor = '';
+                    s.style.boxShadow = '';
+                    s.style.border = '';
+                    s.style.transform = '';
+                    s.style.pointerEvents = 'auto';
+                    s.dataset.reactionStone = 'false';
+                    s.dataset.alreadyClicked = 'false';
+                }
+            });
+            
+            // Highlight new stone with intense glow
+            randomStone.style.backgroundColor = 'rgba(76, 175, 80, 0.95)';
+            randomStone.style.boxShadow = '0 0 40px rgba(76, 175, 80, 1), inset 0 0 20px rgba(76, 175, 80, 0.5)';
+            randomStone.style.border = '3px solid #4caf50';
+            randomStone.style.transform = 'scale(1.15)';
+            randomStone.style.pointerEvents = 'auto';
+            randomStone.dataset.reactionStone = 'true';
+            randomStone.dataset.alreadyClicked = 'false';
+            randomStone.dataset.startTime = Date.now();
+            
+            reactionState.currentHighlightedStone = randomStone;
+
+            // If user doesn't click in 2.5 seconds, show too slow message
+            const tooSlowTimeout = setTimeout(() => {
+                if (randomStone.dataset.reactionStone === 'true') {
+                    randomStone.style.backgroundColor = 'rgba(244, 67, 54, 0.9)';
+                    randomStone.style.boxShadow = '0 0 40px rgba(244, 67, 54, 1)';
+                    randomStone.style.border = '3px solid #f44336';
+                    randomStone.dataset.reactionStone = 'false';
+                    
+                    reactionState.missedRounds++;
+                    showFact('Too Slow! ⏱️', 'You took too long! Max 2.5 seconds.');
+                    setTimeout(() => {
+                        randomStone.style.backgroundColor = '';
+                        randomStone.style.boxShadow = '';
+                        randomStone.style.border = '';
+                        randomStone.style.transform = '';
+                        startReactionRound();
+                    }, 600);
+                }
+            }, 2500);
+
+            randomStone.dataset.tooSlowTimeout = tooSlowTimeout;
+        }
+
+        function clickReactionStone(stone) {
+            // Only register clicks on the highlighted stone
+            if (stone.dataset.reactionStone !== 'true' || !reactionState.gameActive) {
+                return;
+            }
+
+            // Prevent multiple clicks on same stone
+            if (stone.dataset.alreadyClicked === 'true') {
+                return;
+            }
+            stone.dataset.alreadyClicked = 'true';
+
+            const startTime = parseInt(stone.dataset.startTime);
+            const reactionTime = Date.now() - startTime;
+            
+            // Clear any pending timeouts
+            const tooSlowTimeout = parseInt(stone.dataset.tooSlowTimeout);
+            if (tooSlowTimeout) {
+                clearTimeout(tooSlowTimeout);
+            }
+            
+            reactionState.scores.push(reactionTime);
+            reactionState.fastestTime = Math.min(reactionState.fastestTime, reactionTime);
+            reactionState.slowestTime = Math.max(reactionState.slowestTime, reactionTime);
+
+            // Immediate visual feedback - more intense
+            stone.style.backgroundColor = 'rgba(76, 175, 80, 0.98)';
+            stone.style.boxShadow = '0 0 60px rgba(76, 175, 80, 1), inset 0 0 40px rgba(76, 175, 80, 0.8), 0 0 20px rgba(0, 212, 255, 0.5)';
+            stone.style.transform = 'scale(0.85)';
+            stone.style.border = '3px solid #00ff00';
+            stone.classList.add('correct');
+            stone.dataset.reactionStone = 'false';
+
+            // Show reaction time feedback with performance rating
+            let feedback = '';
+            let pointsEarned = 0;
+            
+            if (reactionTime < 100) {
+                feedback = '🔥 INCREDIBLE! ' + reactionTime + 'ms - SUPERHUMAN! 🔥';
+                pointsEarned = 60;
+            } else if (reactionTime < 150) {
+                feedback = '⚡ ELITE! ' + reactionTime + 'ms - Professional Speed!';
+                pointsEarned = 55;
+            } else if (reactionTime < 200) {
+                feedback = '🚀 AMAZING! ' + reactionTime + 'ms - Exceptional!';
+                pointsEarned = 50;
+            } else if (reactionTime < 250) {
+                feedback = '🌟 EXCELLENT! ' + reactionTime + 'ms - Very Fast!';
+                pointsEarned = 45;
+            } else if (reactionTime < 300) {
+                feedback = '⭐ GREAT! ' + reactionTime + 'ms - Impressive!';
+                pointsEarned = 40;
+            } else if (reactionTime < 350) {
+                feedback = '👍 GOOD! ' + reactionTime + 'ms - Nice!';
+                pointsEarned = 35;
+            } else if (reactionTime < 400) {
+                feedback = '😊 OK! ' + reactionTime + 'ms - Decent!';
+                pointsEarned = 30;
+            } else if (reactionTime < 500) {
+                feedback = '💪 ACCEPTABLE! ' + reactionTime + 'ms - Can Do Better!';
+                pointsEarned = 20;
+            } else if (reactionTime < 750) {
+                feedback = '⏱️ SLOW! ' + reactionTime + 'ms - Keep Improving!';
+                pointsEarned = 10;
+            } else {
+                feedback = '🐌 VERY SLOW! ' + reactionTime + 'ms - Practice More!';
+                pointsEarned = 5;
+            }
+
+            addScore(pointsEarned);
+            showFact('⚡ Reaction Time', feedback);
+
+            setTimeout(() => {
+                stone.style.backgroundColor = '';
+                stone.style.boxShadow = '';
+                stone.style.border = '';
+                stone.style.transform = '';
+                stone.style.animation = '';
+                stone.classList.remove('correct');
+                stone.dataset.alreadyClicked = 'false';
+                startReactionRound();
+            }, 700);
+        }
+
+        function endReactionGame() {
+            reactionState.gameActive = false;
+            
+            // Calculate average
+            const total = reactionState.scores.reduce((a, b) => a + b, 0);
+            reactionState.averageReactionTime = Math.round(total / reactionState.scores.length);
+
+            const builder = document.getElementById('pyramidBuilder');
+            builder.innerHTML = '';
+
+            // Create results visualization
+            const resultsDiv = document.createElement('div');
+            resultsDiv.style.textAlign = 'center';
+            resultsDiv.style.color = 'var(--text-light)';
+            resultsDiv.style.marginTop = '20px';
+
+            let performanceRating = '';
+            let bonusPoints = 0;
+            let ratingEmoji = '';
+            
+            if (reactionState.averageReactionTime < 120) {
+                performanceRating = 'GODLIKE REFLEXES! 🔥🔥🔥';
+                bonusPoints = 300;
+                ratingEmoji = '🏆';
+                unlockAchievement('⚡', 'Reaction God');
+            } else if (reactionState.averageReactionTime < 160) {
+                performanceRating = 'ELITE LEVEL! 🔥🔥';
+                bonusPoints = 250;
+                ratingEmoji = '👑';
+                unlockAchievement('👑', 'Elite Speed');
+            } else if (reactionState.averageReactionTime < 210) {
+                performanceRating = 'PROFESSIONAL CLASS! 🌟';
+                bonusPoints = 200;
+                ratingEmoji = '🥇';
+                unlockAchievement('🎯', 'Quick Click');
+            } else if (reactionState.averageReactionTime < 280) {
+                performanceRating = 'EXCELLENT! ⭐';
+                bonusPoints = 150;
+                ratingEmoji = '🥈';
+            } else if (reactionState.averageReactionTime < 350) {
+                performanceRating = 'GREAT! 👍';
+                bonusPoints = 100;
+                ratingEmoji = '🥉';
+            } else if (reactionState.averageReactionTime < 450) {
+                performanceRating = 'GOOD! 😊';
+                bonusPoints = 50;
+                ratingEmoji = '💪';
+            } else {
+                performanceRating = 'KEEP PRACTICING! 📚';
+                bonusPoints = 20;
+                ratingEmoji = '🎯';
+            }
+
+            const accuracyPercentage = Math.round(((reactionState.totalRounds - reactionState.missedRounds) / reactionState.totalRounds) * 100);
+
+            resultsDiv.innerHTML = `
+                <h2 style="color: var(--gold); font-size: 2.2rem; margin: 20px 0;">${ratingEmoji} REACTION TEST COMPLETE! ${ratingEmoji}</h2>
+                <p style="font-size: 1.5rem; margin: 20px 0; color: var(--cyan-glow); font-weight: bold;">${performanceRating}</p>
+                
+                <div style="background: linear-gradient(135deg, rgba(212, 175, 55, 0.2), rgba(0, 212, 255, 0.1)); padding: 30px; border-radius: 10px; margin: 20px 0; border: 2px solid var(--gold);">
+                    <div style="margin: 20px 0;">
+                        <div style="color: var(--text-light); font-size: 1rem; opacity: 0.8; font-weight: bold;">YOUR AVERAGE REACTION TIME</div>
+                        <div style="color: var(--gold); font-size: 2.8rem; font-weight: bold; margin-top: 10px;">${reactionState.averageReactionTime}ms</div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-top: 25px;">
+                        <div style="background: rgba(76, 175, 80, 0.15); padding: 15px; border-radius: 8px; border: 2px solid #4caf50;">
+                            <div style="color: var(--text-light); font-size: 0.9rem; opacity: 0.8;">FASTEST</div>
+                            <div style="color: #4caf50; font-size: 1.8rem; font-weight: bold; margin-top: 8px;">${reactionState.fastestTime}ms</div>
+                            <div style="color: #4caf50; font-size: 0.8rem; margin-top: 5px;">⚡ Peak Speed</div>
+                        </div>
+                        <div style="background: rgba(0, 212, 255, 0.15); padding: 15px; border-radius: 8px; border: 2px solid var(--cyan-glow);">
+                            <div style="color: var(--text-light); font-size: 0.9rem; opacity: 0.8;">ACCURACY</div>
+                            <div style="color: var(--cyan-glow); font-size: 1.8rem; font-weight: bold; margin-top: 8px;">${accuracyPercentage}%</div>
+                            <div style="color: var(--cyan-glow); font-size: 0.8rem; margin-top: 5px;">Rounds Completed</div>
+                        </div>
+                        <div style="background: rgba(255, 152, 0, 0.15); padding: 15px; border-radius: 8px; border: 2px solid #ff9800;">
+                            <div style="color: var(--text-light); font-size: 0.9rem; opacity: 0.8;">SLOWEST</div>
+                            <div style="color: #ff9800; font-size: 1.8rem; font-weight: bold; margin-top: 8px;">${reactionState.slowestTime}ms</div>
+                            <div style="color: #ff9800; font-size: 0.8rem; margin-top: 5px;">🐢 Slowest Click</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(212, 175, 55, 0.1)); padding: 25px; border-radius: 10px; margin: 20px 0; border: 2px solid var(--cyan-glow);">
+                    <div style="color: var(--text-light); font-size: 1rem; opacity: 0.8; font-weight: bold;">BONUS POINTS EARNED</div>
+                    <div style="color: var(--cyan-glow); font-size: 2.5rem; font-weight: bold; margin-top: 10px;">+${bonusPoints} 🎯</div>
+                </div>
+
+                <button class="interactive-button" onclick="startPyramidBuilder()" style="margin-top: 20px; padding: 15px 40px; font-size: 1.1rem;">⚡ Try Again</button>
+            `;
+
+            builder.appendChild(resultsDiv);
+            addScore(bonusPoints);
+            showFact('⚡ Reaction Test Complete!', `Average: ${reactionState.averageReactionTime}ms | Accuracy: ${accuracyPercentage}% | Bonus: +${bonusPoints} points!`);
+        }
+
+        function switchTab(tabName, btn) {
+            gameState.currentTab = tabName;
+            
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            document.querySelectorAll('.tab-btn').forEach(button => {
+                button.classList.remove('active');
+            });
+            
+            document.getElementById(tabName + '-tab').classList.add('active');
+            if (btn) btn.classList.add('active');
+        }
+
+        function showImageModal(image) {
+            document.getElementById('modalImage').textContent = image.emoji;
+            document.getElementById('modalTitle').textContent = image.title;
+            document.getElementById('modalText').textContent = image.desc;
+            document.getElementById('imageModal').classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('imageModal').classList.remove('show');
+        }
+
+        function goHome() {
+            elements.interiorScreen.classList.remove('active');
+            elements.homeScreen.classList.remove('fade-out');
+            gameState.currentView = 'home';
+        }
+
+        function showFact(title, text) {
+            document.getElementById('factTitle').textContent = title.toUpperCase();
+            document.getElementById('factText').textContent = text;
+            elements.factPopup.classList.add('show');
+
+            setTimeout(() => {
+                if (elements.factPopup.classList.contains('show')) {
+                    elements.factPopup.classList.remove('show');
+                }
+            }, 6000);
+        }
+
+        function addScore(points) {
+            gameState.score += points;
+            elements.statsScore.textContent = gameState.score;
+            showFact('Points!', '+' + points + ' points earned!');
+        }
+
+        function unlockAchievement(emoji, name) {
+            if (!gameState.achievements.includes(name)) {
+                gameState.achievements.push(name);
+                const badge = document.createElement('div');
+                badge.className = 'achievement-item';
+                badge.textContent = emoji;
+                badge.title = name;
+                elements.achievementsBadge.appendChild(badge);
+            }
+        }
+
+        document.addEventListener('click', function(event) {
+            const modal = document.getElementById('imageModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        });
+
+        init();
+    </script>
+</body>
+</html>
